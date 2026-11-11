@@ -9,5 +9,10 @@ use PhpCsFixer\Finder;
 return EtelConfig::create(
     finder: Finder::create()
         ->in([__DIR__ . '/src', __DIR__ . '/tests'])
-        ->append([__DIR__ . '/bin/etel-line-length', __DIR__ . '/.php-cs-fixer.dist.php'])
+        ->append([
+            __DIR__ . '/bin/etel-coverage',
+            __DIR__ . '/bin/etel-line-length',
+            __DIR__ . '/stubs/pcov.php',
+            __DIR__ . '/.php-cs-fixer.dist.php',
+        ])
 );

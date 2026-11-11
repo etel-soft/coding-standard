@@ -14,7 +14,8 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
-          coverage: none
+          # the coverage gate's end-to-end test runs bin/etel-coverage, which needs pcov
+          coverage: pcov
 
       - run: composer install --no-interaction --prefer-dist
 

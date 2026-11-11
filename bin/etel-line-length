@@ -4,86 +4,32 @@
 declare(strict_types=1);
 
 /*
- * Line-length gate: no line of the PHP sources is longer than 120 characters (php-cs-fixer has no such rule).
- * Characters, not bytes: Ukrainian or other non-ASCII text counts once per letter.
- *
- * Also catches a docblock followed by another one (blank lines between do not count): the first describes nothing —
- * usually code inserted between a docblock and what it documented.
+ * Line-length gate: no line of the PHP sources is longer than 120 characters, and no docblock is followed by
+ * another one (see Etel\CodingStandard\LineLength\LineLengthGate).
  *
  * Runs in the package it checks (its working directory is the root):
  *
- *   vendor/bin/etel-line-length
- *
- * config/reference.php is left out: Symfony generates it on every cache warmup. Scripts in bin/ are
- * checked whatever their extension (bin/console has none).
+ *   vendor/bin/etel-line-length                         bin, config, migrations, public, src, tests, tools
+ *   vendor/bin/etel-line-length src tests other-dir     only these (each must exist)
  */
 
-const LIMIT = 120;
-const ROOTS = ['bin', 'config', 'migrations', 'public', 'src', 'tests', 'tools'];
-const SKIPPED = ['config/reference.php'];
+use Etel\CodingStandard\LineLength\LineLengthGate;
 
-$root = (string) \getcwd();
-$long = [];
-$orphans = [];
+require $GLOBALS['_composer_autoload_path'] ?? __DIR__ . '/../vendor/autoload.php';
 
-foreach (ROOTS as $directory) {
-    if (!\is_dir(filename: $root . '/' . $directory)) {
-        continue;
-    }
+/** @var list<string> $arguments */
+$arguments = $_SERVER['argv'] ?? [];
+$directories = \array_slice(array: $arguments, offset: 1);
 
-    $files = new RecursiveIteratorIterator(
-        iterator: new RecursiveDirectoryIterator(
-            directory: $root . '/' . $directory,
-            flags: FilesystemIterator::SKIP_DOTS
-        )
+try {
+    ['long' => $long, 'orphans' => $orphans] = new LineLengthGate(root: (string) \getcwd())->check(
+        directories: $directories
     );
+} catch (InvalidArgumentException $exception) {
+    \fwrite(stream: STDERR, data: $exception->getMessage() . PHP_EOL);
 
-    foreach ($files as $file) {
-        if (!$file instanceof SplFileInfo) {
-            continue;
-        }
-
-        $path = \substr(string: $file->getPathname(), offset: \strlen(string: $root) + 1);
-
-        $skipped = \in_array(needle: $path, haystack: SKIPPED, strict: true);
-
-        $script = \str_ends_with(haystack: $path, needle: '.php') || \str_starts_with(haystack: $path, needle: 'bin/');
-
-        if ($skipped || !$script) {
-            continue;
-        }
-
-        $closedAt = null;
-        $inDocblock = false;
-
-        foreach (\file(filename: $file->getPathname(), flags: FILE_IGNORE_NEW_LINES) ?: [] as $index => $line) {
-            $length = \mb_strlen(string: \rtrim(string: $line, characters: "\r"), encoding: 'UTF-8');
-
-            if ($length > LIMIT) {
-                $long[] = $path . ':' . ($index + 1) . ' (' . $length . ')';
-            }
-
-            $trimmed = \trim(string: $line);
-
-            if ($inDocblock) {
-                $inDocblock = !\str_ends_with(haystack: $trimmed, needle: '*/');
-                $closedAt = $inDocblock ? null : $index + 1;
-            } elseif (\str_starts_with(haystack: $trimmed, needle: '/**')) {
-                if ($closedAt !== null) {
-                    $orphans[] = $path . ':' . $closedAt . ' (docblock followed by another docblock)';
-                }
-
-                $inDocblock = !\str_ends_with(haystack: $trimmed, needle: '*/');
-                $closedAt = $inDocblock ? null : $index + 1;
-            } elseif ($trimmed !== '') {
-                $closedAt = null;
-            }
-        }
-    }
+    exit(2);
 }
-
-\sort(array: $long);
-\sort(array: $orphans);
 
 foreach ([...$long, ...$orphans] as $line) {
     \fwrite(stream: STDERR, data: $line . PHP_EOL);
@@ -92,8 +38,8 @@ foreach ([...$long, ...$orphans] as $line) {
 \fwrite(
     stream: $long === [] ? STDOUT : STDERR,
     data: $long === []
-        ? 'No line is longer than ' . LIMIT . ' characters.' . PHP_EOL
-        : \count(value: $long) . ' line(s) longer than ' . LIMIT . ' characters.' . PHP_EOL
+        ? 'No line is longer than ' . LineLengthGate::LIMIT . ' characters.' . PHP_EOL
+        : \count(value: $long) . ' line(s) longer than ' . LineLengthGate::LIMIT . ' characters.' . PHP_EOL
 );
 
 if ($orphans !== []) {

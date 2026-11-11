@@ -5,9 +5,13 @@ includes:
 parameters:
     level: 10
     paths:
+        - bin/etel-coverage
         - bin/etel-line-length
         - src/
         - tests/
+    # pcov is loaded only where coverage is collected: its API for the analysis elsewhere
+    scanFiles:
+        - stubs/pcov.php
     etel:
         # the package has no doubles to configure and does not depend on etel/phpunit-double
         doubleConfigurator: false

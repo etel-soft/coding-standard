@@ -5,3 +5,4 @@
 /tests export-ignore
 /.github export-ignore
 /CLAUDE.md export-ignore
+/stubs export-ignore

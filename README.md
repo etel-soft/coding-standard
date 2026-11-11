@@ -1,7 +1,7 @@
 # etel coding standard
 
 The coding standard of the etel projects as a dev dependency: one place for the php-cs-fixer rule set, the
-fixers it needs, the PHPStan rules and the line-length gate. A project lists only what it does differently, so
+fixers it needs, the PHPStan rules, the line-length gate and the coverage gate. A project lists only what it does differently, so
 a change to the standard is a version bump rather than an edit in every repository.
 
 The conventions themselves (what the tools check and what they cannot) are described in the projects'
@@ -77,9 +77,39 @@ message (after `@@`, as JSON), for a script that rewrites the calls.
 ## Line length
 
 ```sh
-vendor/bin/etel-line-length
+vendor/bin/etel-line-length                       # bin, config, migrations, public, src, tests, tools
+vendor/bin/etel-line-length src tests other-dir   # only these
 ```
 
-Run in the package root: no line in `bin/`, `config/`, `migrations/`, `public/`, `src/`, `tests/` or `tools/` is
-longer than 120 characters (characters, not bytes), and no docblock is followed by another one. The generated
+Run in the package root: no line is longer than 120 characters (characters, not bytes), and no docblock is
+followed by another one. Without arguments the directories above are checked (those missing are skipped); named
+directories replace them, and each must exist — a typo fails (exit code 2) instead of passing as "nothing too
+long". PHP files are checked, and every script in `bin/` whatever its extension. The generated
 `config/reference.php` is skipped.
+
+## Coverage
+
+```sh
+php -d pcov.enabled=1 vendor/bin/etel-coverage
+```
+
+Runs the unit tests (`tests/Unit`) with [pcov](https://github.com/krakjoe/pcov) collecting and fails unless every
+executable line of `src/` is covered by a test that **declares** it — PHPUnit's own semantics of
+`#[CoversClass]` (the class and the traits it uses), `#[CoversTrait]`, `#[CoversMethod]`, `#[CoversFunction]` and
+`#[CoversNothing]`. A line a test merely passes through (a value object the tested class uses) stays uncovered
+until its own test exercises it. Other `Covers*` attributes (`CoversNamespace`, `CoversClassesThatExtendClass`, …)
+stop the run: they would silently count wrong. Code run in `setUpBeforeClass()` or by data providers counts for
+nobody.
+
+Needs `phpunit/phpunit` ^13 and `ext-pcov` (both suggested by the package). It drives pcov itself because with
+PHPUnit 13 and pcov 1.0.x `phpunit --coverage-*` reports 0 %. pcov instruments only `pcov.directory` (by default
+`src/`, `lib/` or `app/` of the working directory): sources elsewhere need `-d pcov.directory=.`.
+
+| Environment         | Default      | Meaning                                                               |
+|---------------------|--------------|-----------------------------------------------------------------------|
+| `COVERAGE_SOURCES`  | `src`        | the directories measured, comma-separated                             |
+| `COVERAGE_TESTS`    | `tests/Unit` | the test paths run, comma-separated                                   |
+| `COVERAGE_SCOPE`    | —            | report only sources under these prefixes, while working on one area   |
+
+Exit code 0 — every line covered and the tests passed; 1 — uncovered lines (listed file by file) or failing tests;
+2 — no pcov, or a source directory that does not exist.

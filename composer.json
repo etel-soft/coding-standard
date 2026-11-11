@@ -21,6 +21,13 @@
         "phpstan/phpstan": "^2.1",
         "phpstan/phpstan-deprecation-rules": "^2.0"
     },
+    "conflict": {
+        "phpunit/phpunit": "<13.0"
+    },
+    "suggest": {
+        "ext-pcov": "For bin/etel-coverage: pcov collects the line coverage it counts",
+        "phpunit/phpunit": "For bin/etel-coverage (^13): the gate runs the unit tests through PHPUnit"
+    },
     "require-dev": {
         "phpunit/phpunit": "^13.1"
     },
@@ -35,6 +42,7 @@
         }
     },
     "bin": [
+        "bin/etel-coverage",
         "bin/etel-line-length"
     ],
     "extra": {

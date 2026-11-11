@@ -8,6 +8,8 @@
     <testsuites>
         <testsuite name="unit">
             <directory>tests</directory>
+            <!-- a project for bin/etel-coverage to run on: its tests run there, not here -->
+            <exclude>tests/Fixtures</exclude>
         </testsuite>
     </testsuites>
     <source>

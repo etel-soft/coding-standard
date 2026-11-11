@@ -1,0 +1,153 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/*
+ * Line-coverage gate: runs the unit tests inside our own pcov window and fails unless every executable line of the
+ * sources is covered by a test that declares it (#[CoversClass] and the rest, see
+ * Etel\CodingStandard\Coverage\DeclaredCoverage). A line one test merely passes through (a value object the tested
+ * class uses) stays uncovered until its own test exercises it.
+ *
+ * Runs in the package it checks (its working directory is the root), with pcov enabled:
+ *
+ *   php -d pcov.enabled=1 vendor/bin/etel-coverage
+ *
+ * pcov instruments only pcov.directory (by default src/, lib/ or app/ of the working directory): sources elsewhere
+ * need `-d pcov.directory=.`.
+ *
+ * Why not `phpunit --coverage-*`: with phpunit 13 + pcov 1.0.x the driver's stop() intersects pcov's waiting() list
+ * with the filter and comes back empty — every report says 0%. Raw pcov collects fine, so we drive it here.
+ *
+ * Every source is loaded before the suite: the lines that run at load time (class declarations) are not counted, the
+ * rest is the executable total.
+ *
+ * Environment (lists are comma-separated, paths relative to the root):
+ *   COVERAGE_SOURCES=src                    the directories measured (default: src)
+ *   COVERAGE_SCOPE=src/Component/Catalog/   report only sources under these prefixes, while working on one area
+ *   COVERAGE_TESTS=tests/Unit/Component     the test paths run (default: tests/Unit)
+ */
+
+use Etel\CodingStandard\Coverage\CoverageReport;
+use Etel\CodingStandard\Coverage\DeclaredCoverageExtension;
+use PHPUnit\TextUI\Application;
+
+if (!\extension_loaded(extension: 'pcov') || !\ini_get(option: 'pcov.enabled')) {
+    \fwrite(stream: STDERR, data: 'pcov is required: php -d pcov.enabled=1 vendor/bin/etel-coverage' . PHP_EOL);
+
+    exit(2);
+}
+
+require $GLOBALS['_composer_autoload_path'] ?? __DIR__ . '/../vendor/autoload.php';
+
+/** @noinspection PhpUnnecessaryFullyQualifiedNameInspection */
+$root = (string) \getcwd();
+
+/**
+ * @return list<string>
+ */
+$listed = static function (string $name, string $default): array {
+    $value = \getenv(name: $name);
+
+    return \array_values(array: \array_filter(array: \explode(
+        separator: ',',
+        string: \is_string(value: $value) && $value !== '' ? $value : $default
+    )));
+};
+
+$sources = [];
+
+foreach ($listed(name: 'COVERAGE_SOURCES', default: 'src') as $directory) {
+    if (!\is_dir(filename: $root . '/' . $directory)) {
+        \fwrite(stream: STDERR, data: 'No directory ' . $directory . ' in ' . $root . '.' . PHP_EOL);
+
+        exit(2);
+    }
+
+    $iterator = new RecursiveIteratorIterator(
+        iterator: new RecursiveDirectoryIterator(
+            directory: $root . '/' . $directory,
+            flags: FilesystemIterator::SKIP_DOTS
+        )
+    );
+
+    foreach ($iterator as $file) {
+        if ($file instanceof SplFileInfo && $file->getExtension() === 'php') {
+            $sources[] = (string) $file->getRealPath();
+        }
+    }
+}
+
+$scope = $listed(name: 'COVERAGE_SCOPE', default: '');
+
+if ($scope !== []) {
+    $sources = \array_filter(
+        array: $sources,
+        callback: static fn (string $source): bool => \array_any(
+            array: $scope,
+            callback: static fn (string $prefix): bool => \str_starts_with(
+                haystack: $source,
+                needle: $root . '/' . $prefix
+            )
+        )
+    );
+}
+
+$sources = \array_values(array: \array_unique(array: $sources));
+\sort(array: $sources);
+
+// load everything first: what runs at load time is left out, the rest is the executable total
+\pcov\start();
+
+foreach ($sources as $source) {
+    try {
+        require_once $source;
+    } catch (Throwable) {
+        // an unloadable file has no coverage data and is left out of the total
+    }
+}
+
+$executable = [];
+
+foreach (\pcov\collect(type: \pcov\inclusive, filter: $sources) as $file => $lines) {
+    foreach ($lines as $line => $hits) {
+        if ($hits < 0) {
+            $executable[$file][] = $line;
+        }
+    }
+}
+
+\pcov\clear();
+
+// PHPUnit may end the process itself: the verdict is given on shutdown
+\register_shutdown_function(callback: static function () use ($root, $sources, $executable): void {
+    \pcov\stop();
+
+    $report = CoverageReport::of(
+        root: $root,
+        sources: $sources,
+        executable: $executable,
+        covered: DeclaredCoverageExtension::$covered
+    );
+    \fwrite(stream: STDERR, data: PHP_EOL . $report->render());
+
+    $testsPassed = ($GLOBALS['etelCoverageTestsExit'] ?? 1) === 0;
+
+    if (!$testsPassed) {
+        \fwrite(stream: STDERR, data: 'Tests failed.' . PHP_EOL);
+    }
+
+    if (!$testsPassed || !$report->isComplete()) {
+        exit(1);
+    }
+});
+
+// positional: PHPUnit marks its API @no-named-arguments
+$GLOBALS['etelCoverageTestsExit'] = new Application()->run([
+    'phpunit',
+    '--no-progress',
+    '--do-not-record-test-run-history',
+    '--extension',
+    DeclaredCoverageExtension::class,
+    ...$listed(name: 'COVERAGE_TESTS', default: 'tests/Unit'),
+]);
