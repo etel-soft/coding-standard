@@ -1,0 +1,60 @@
+{
+    "name": "etel/coding-standard",
+    "type": "library",
+    "homepage": "https://github.com/etel-soft/coding-standard",
+    "description": "The coding standard of the etel projects: a php-cs-fixer rule set with its fixers, PHPStan rules and a line-length gate.",
+    "keywords": ["coding standard", "php-cs-fixer", "phpstan", "static analysis"],
+    "license": "MIT",
+    "prefer-stable": true,
+    "authors": [
+        {
+            "name": "Mykola Zyk",
+            "email": "mykola@etel.dev"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/etel-soft/coding-standard/issues"
+    },
+    "require": {
+        "php": ">=8.5",
+        "friendsofphp/php-cs-fixer": "^3.95",
+        "phpstan/phpstan": "^2.1",
+        "phpstan/phpstan-deprecation-rules": "^2.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^13.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Etel\\CodingStandard\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Etel\\CodingStandardTests\\": "tests/"
+        }
+    },
+    "bin": [
+        "bin/etel-line-length"
+    ],
+    "extra": {
+        "phpstan": {
+            "includes": [
+                "extension.neon"
+            ]
+        }
+    },
+    "config": {
+        "platform": {
+            "php": "8.5.0"
+        },
+        "sort-packages": true
+    },
+    "scripts": {
+        "test": "phpunit",
+        "cs-check": "php-cs-fixer check --diff",
+        "cs-fix": "php-cs-fixer fix",
+        "stan": "phpstan analyse --memory-limit 512M",
+        "lines": "@php bin/etel-line-length"
+    }
+}

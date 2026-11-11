@@ -1,0 +1,24 @@
+###> etel-soft/coding-standard ###
+/vendor/
+/composer.lock
+###< etel-soft/coding-standard ###
+
+###> friendsofphp/php-cs-fixer ###
+/.php-cs-fixer.php
+/.php-cs-fixer.cache
+###< friendsofphp/php-cs-fixer ###
+
+###> phpstan/phpstan ###
+/phpstan.neon
+###< phpstan/phpstan ###
+
+###> phpunit/phpunit ###
+/.phpunit
+/phpunit.xml
+/.phpunit.result.cache
+/coverage/
+###< phpunit/phpunit ###
+
+###> custom dev rules ###
+/.idea
+###< custom dev rules ###

@@ -1,0 +1,58 @@
+# The PHPStan rules of the etel coding standard. A project includes this file and turns rules off
+# (or names its JSON/XML wrapper) under `parameters.etel`:
+#
+#   includes:
+#       - vendor/etel/coding-standard/extension.neon
+#   parameters:
+#       etel:
+#           jsonWrapper: App\Json
+#           doubleConfigurator: false
+
+parametersSchema:
+    etel: structure([
+        namedArguments: bool(),
+        stringInterpolation: bool(),
+        doubleConfigurator: bool(),
+        rawJson: bool(),
+        jsonWrapper: schema(string(), nullable()),
+        rawXml: bool(),
+        xmlWrapper: schema(string(), nullable()),
+    ])
+
+parameters:
+    etel:
+        # named arguments wherever possible
+        namedArguments: true
+        # concatenation, never interpolation
+        stringInterpolation: true
+        # test doubles via the etel/phpunit-double configurators
+        doubleConfigurator: true
+        # JSON only through the wrapper class (null: no class may call json_*)
+        rawJson: true
+        jsonWrapper: null
+        # XML only through the wrapper class (null: no class may call simplexml_load_*)
+        rawXml: true
+        xmlWrapper: null
+
+conditionalTags:
+    Etel\CodingStandard\PHPStan\NamedArgumentsRule:
+        phpstan.rules.rule: %etel.namedArguments%
+    Etel\CodingStandard\PHPStan\NoStringInterpolationRule:
+        phpstan.rules.rule: %etel.stringInterpolation%
+    Etel\CodingStandard\PHPStan\DoubleConfiguratorRule:
+        phpstan.rules.rule: %etel.doubleConfigurator%
+    Etel\CodingStandard\PHPStan\NoRawJsonRule:
+        phpstan.rules.rule: %etel.rawJson%
+    Etel\CodingStandard\PHPStan\NoRawXmlRule:
+        phpstan.rules.rule: %etel.rawXml%
+
+services:
+    - class: Etel\CodingStandard\PHPStan\NamedArgumentsRule
+    - class: Etel\CodingStandard\PHPStan\NoStringInterpolationRule
+    - class: Etel\CodingStandard\PHPStan\DoubleConfiguratorRule
+    - class: Etel\CodingStandard\PHPStan\NoRawJsonRule
+      arguments:
+          wrapper: %etel.jsonWrapper%
+    - class: Etel\CodingStandard\PHPStan\NoRawXmlRule
+      arguments:
+          wrapper: %etel.xmlWrapper%

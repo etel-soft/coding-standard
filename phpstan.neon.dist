@@ -1,0 +1,15 @@
+includes:
+    - extension.neon
+    - vendor/phpstan/phpstan-deprecation-rules/rules.neon
+
+parameters:
+    level: 10
+    paths:
+        - bin/etel-line-length
+        - src/
+        - tests/
+    etel:
+        # the package has no doubles to configure and does not depend on etel/phpunit-double
+        doubleConfigurator: false
+        # no JSON wrapper here: the one json_encode() writes the machine-readable fix data of NamedArgumentsRule
+        rawJson: false
