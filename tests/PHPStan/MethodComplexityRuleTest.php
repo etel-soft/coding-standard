@@ -35,12 +35,12 @@ final class MethodComplexityRuleTest extends RuleTestCase
                 [
                     'Method Etel\CodingStandardTests\Fixtures\PHPStan\Size\Measured::nested() has cognitive '
                         . 'complexity 12, the limit is 3: split it.',
-                    30,
+                    32,
                 ],
                 [
                     'Method Etel\CodingStandardTests\Fixtures\PHPStan\Size\Measured::jumps() has cognitive '
                         . 'complexity 6, the limit is 3: split it.',
-                    52,
+                    54,
                 ],
             ]
         );

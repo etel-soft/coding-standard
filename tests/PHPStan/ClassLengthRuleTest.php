@@ -41,12 +41,12 @@ final class ClassLengthRuleTest extends RuleTestCase
                 [
                     'Class Etel\CodingStandardTests\Fixtures\PHPStan\Size\Measured is 52 lines long, the limit is '
                         . '20: split it.',
-                    11,
+                    13,
                 ],
                 [
                     'Class Etel\CodingStandardTests\Fixtures\PHPStan\Size\MeasuredTest is 18 lines long, the '
                         . 'limit is 10: split it.',
-                    16,
+                    18,
                 ],
             ]
         );

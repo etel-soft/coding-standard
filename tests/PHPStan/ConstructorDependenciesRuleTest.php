@@ -38,7 +38,7 @@ final class ConstructorDependenciesRuleTest extends RuleTestCase
             expectedErrors: [[
                 'Class Etel\CodingStandardTests\Fixtures\PHPStan\Size\Measured takes 3 objects in its constructor, '
                     . 'the limit is 2: split it.',
-                13,
+                15,
             ]]
         );
     }

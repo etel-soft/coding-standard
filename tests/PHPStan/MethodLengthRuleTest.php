@@ -34,7 +34,7 @@ final class MethodLengthRuleTest extends RuleTestCase
             expectedErrors: [[
                 'Method Etel\CodingStandardTests\Fixtures\PHPStan\Size\Measured::nested() is 18 lines long, '
                     . 'the limit is 10: split it.',
-                30,
+                32,
             ]]
         );
     }

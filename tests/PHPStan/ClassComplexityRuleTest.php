@@ -38,7 +38,7 @@ final class ClassComplexityRuleTest extends RuleTestCase
             expectedErrors: [[
                 'Class Etel\CodingStandardTests\Fixtures\PHPStan\Size\Measured has cognitive complexity 18, '
                     . 'the limit is 15: split it.',
-                11,
+                13,
             ]]
         );
     }
