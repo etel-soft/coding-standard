@@ -6,6 +6,7 @@ namespace Etel\CodingStandard\PHPStan;
 
 use Override;
 use PhpParser\Node;
+use PhpParser\Node\Arg;
 use PhpParser\Node\Expr\CallLike;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
@@ -72,9 +73,37 @@ final readonly class NamedArgumentsRule implements Rule
             return [];
         }
 
+        $positional = self::positional(call: $node);
+        $callee = $positional === [] ? null : $this->callee(call: $node, scope: $scope);
+
+        if ($callee === null || !$callee->acceptsNamedArguments()->yes()) {
+            return [];
+        }
+
+        $names = $this->parameterNames(callee: $callee, call: $node, scope: $scope);
+        $missing = $names === null ? null : self::missing(positional: $positional, names: $names);
+
+        if ($missing === null) {
+            return [];
+        }
+
+        return [
+            RuleErrorBuilder::message(message: self::message(callee: $callee, missing: $missing))
+                ->identifier(identifier: 'etel.namedArguments')
+                ->build(),
+        ];
+    }
+
+    /**
+     * The positional arguments by their index; none when the call unpacks (`...$args`).
+     *
+     * @return array<Arg>
+     */
+    private static function positional(CallLike $call): array
+    {
         $positional = [];
 
-        foreach ($node->getArgs() as $index => $arg) {
+        foreach ($call->getArgs() as $index => $arg) {
             if ($arg->unpack) {
                 return [];
             }
@@ -84,33 +113,38 @@ final readonly class NamedArgumentsRule implements Rule
             }
         }
 
-        if ($positional === []) {
-            return [];
-        }
+        return $positional;
+    }
 
-        $callee = $this->callee(call: $node, scope: $scope);
-
-        if ($callee === null || !$callee->acceptsNamedArguments()->yes()) {
-            return [];
-        }
-
-        $names = $this->parameterNames(callee: $callee, call: $node, scope: $scope);
-
-        if ($names === null) {
-            return [];
-        }
-
+    /**
+     * Each positional argument with its offset in the file, the name it should take and its index;
+     * null when one of them goes beyond the declared parameters or into a variadic one (it cannot be named).
+     *
+     * @param array<Arg>                $positional
+     * @param list<array{string, bool}> $names
+     *
+     * @return null|list<array{int, string, int}>
+     */
+    private static function missing(array $positional, array $names): ?array
+    {
         $missing = [];
 
         foreach ($positional as $index => $arg) {
             if (!isset($names[$index]) || $names[$index][1]) {
-                // beyond the declared parameters, or into a variadic one
-                return [];
+                return null;
             }
 
             $missing[] = [$arg->getStartFilePos(), $names[$index][0], $index];
         }
 
+        return $missing;
+    }
+
+    /**
+     * @param list<array{int, string, int}> $missing
+     */
+    private static function message(ExtendedMethodReflection|FunctionReflection $callee, array $missing): string
+    {
         $labels = array_map(
             callback: static fn (array $argument): string => $argument[1] . ':',
             array: $missing
@@ -124,11 +158,7 @@ final readonly class NamedArgumentsRule implements Rule
             );
         }
 
-        return [
-            RuleErrorBuilder::message(message: $message)
-                ->identifier(identifier: 'etel.namedArguments')
-                ->build(),
-        ];
+        return $message;
     }
 
     /**
@@ -170,52 +200,67 @@ final readonly class NamedArgumentsRule implements Rule
 
     private function callee(CallLike $call, Scope $scope): ExtendedMethodReflection|FunctionReflection|null
     {
-        if ($call instanceof FuncCall) {
-            if (
-                !$call->name instanceof Name
-                || !$this->reflectionProvider->hasFunction(nameNode: $call->name, namespaceAnswerer: $scope)
-            ) {
-                return null;
-            }
+        return match (true) {
+            $call instanceof FuncCall => $this->function(call: $call, scope: $scope),
+            $call instanceof MethodCall,
+            $call instanceof NullsafeMethodCall => self::method(call: $call, scope: $scope),
+            $call instanceof StaticCall => self::staticMethod(call: $call, scope: $scope),
+            $call instanceof New_ => $this->constructor(call: $call, scope: $scope),
+            default => null
+        };
+    }
 
-            return $this->reflectionProvider->getFunction(nameNode: $call->name, namespaceAnswerer: $scope);
+    private function function(FuncCall $call, Scope $scope): ?FunctionReflection
+    {
+        if (
+            !$call->name instanceof Name
+            || !$this->reflectionProvider->hasFunction(nameNode: $call->name, namespaceAnswerer: $scope)
+        ) {
+            return null;
         }
 
-        if ($call instanceof MethodCall || $call instanceof NullsafeMethodCall) {
-            if (!$call->name instanceof Identifier) {
-                return null;
-            }
+        return $this->reflectionProvider->getFunction(nameNode: $call->name, namespaceAnswerer: $scope);
+    }
 
-            return $scope->getMethodReflection(
-                typeWithMethod: $scope->getType(node: $call->var),
-                methodName: $call->name->toString()
-            );
+    private static function method(MethodCall|NullsafeMethodCall $call, Scope $scope): ?ExtendedMethodReflection
+    {
+        if (!$call->name instanceof Identifier) {
+            return null;
         }
 
-        if ($call instanceof StaticCall) {
-            if (!$call->class instanceof Name || !$call->name instanceof Identifier) {
-                return null;
-            }
+        return $scope->getMethodReflection(
+            typeWithMethod: $scope->getType(node: $call->var),
+            methodName: $call->name->toString()
+        );
+    }
 
-            return $scope->getMethodReflection(
-                typeWithMethod: new ObjectType(className: $scope->resolveName(name: $call->class)),
-                methodName: $call->name->toString()
-            );
+    private static function staticMethod(StaticCall $call, Scope $scope): ?ExtendedMethodReflection
+    {
+        if (!$call->class instanceof Name || !$call->name instanceof Identifier) {
+            return null;
         }
 
-        if ($call instanceof New_ && $call->class instanceof Name) {
-            $class = $scope->resolveName(name: $call->class);
+        return $scope->getMethodReflection(
+            typeWithMethod: new ObjectType(className: $scope->resolveName(name: $call->class)),
+            methodName: $call->name->toString()
+        );
+    }
 
-            if (!$this->reflectionProvider->hasClass(className: $class)) {
-                return null;
-            }
-
-            $classReflection = $this->reflectionProvider->getClass(className: $class);
-
-            return $classReflection->hasConstructor() ? $classReflection->getConstructor() : null;
+    private function constructor(New_ $call, Scope $scope): ?ExtendedMethodReflection
+    {
+        if (!$call->class instanceof Name) {
+            return null;
         }
 
-        return null;
+        $class = $scope->resolveName(name: $call->class);
+
+        if (!$this->reflectionProvider->hasClass(className: $class)) {
+            return null;
+        }
+
+        $classReflection = $this->reflectionProvider->getClass(className: $class);
+
+        return $classReflection->hasConstructor() ? $classReflection->getConstructor() : null;
     }
 
     private static function calleeName(ExtendedMethodReflection|FunctionReflection $callee): string

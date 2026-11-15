@@ -7,6 +7,9 @@
 #       etel:
 #           jsonWrapper: App\Json
 #           doubleConfigurator: false
+#           methodLength: 80
+#
+# The size limits are numbers; 0 turns the limit off.
 
 parametersSchema:
     etel: structure([
@@ -18,6 +21,14 @@ parametersSchema:
         rawXml: bool(),
         xmlWrapper: schema(string(), nullable()),
         ormRepository: bool(),
+        methodComplexity: int(),
+        methodLength: int(),
+        classComplexity: int(),
+        classLength: int(),
+        testClassLength: int(),
+        constructorDependencies: int(),
+        testPaths: listOf(string()),
+        constructorDependenciesExempt: listOf(string()),
     ])
 
 parameters:
@@ -36,6 +47,18 @@ parameters:
         xmlWrapper: null
         # no Doctrine repositories: neither getRepository() nor repository classes
         ormRepository: true
+        # the most cognitive complexity of a method / of a class (the sum of its methods'); tests are left out
+        methodComplexity: 15
+        classComplexity: 60
+        # the most lines of a method / of a class (docblock not counted); methods of tests are left out
+        methodLength: 50
+        classLength: 500
+        testClassLength: 2500
+        # the most objects a constructor takes, outside tests and the namespaces listed (say, '\Domain\')
+        constructorDependencies: 8
+        constructorDependenciesExempt: []
+        # test code, held to the test limits: PHPUnit test cases and whatever lies in these paths
+        testPaths: ['/tests/']
 
 conditionalTags:
     Etel\CodingStandard\PHPStan\NamedArgumentsRule:
@@ -65,3 +88,28 @@ services:
           wrapper: %etel.xmlWrapper%
     - class: Etel\CodingStandard\PHPStan\NoOrmRepositoryRule
     - class: Etel\CodingStandard\PHPStan\NoOrmRepositoryClassRule
+    - class: Etel\CodingStandard\PHPStan\Size\TestClass
+      arguments:
+          paths: %etel.testPaths%
+    - class: Etel\CodingStandard\PHPStan\MethodComplexityRule
+      arguments:
+          limit: %etel.methodComplexity%
+      tags: [phpstan.rules.rule]
+    - class: Etel\CodingStandard\PHPStan\MethodLengthRule
+      arguments:
+          limit: %etel.methodLength%
+      tags: [phpstan.rules.rule]
+    - class: Etel\CodingStandard\PHPStan\ClassComplexityRule
+      arguments:
+          limit: %etel.classComplexity%
+      tags: [phpstan.rules.rule]
+    - class: Etel\CodingStandard\PHPStan\ClassLengthRule
+      arguments:
+          limit: %etel.classLength%
+          testLimit: %etel.testClassLength%
+      tags: [phpstan.rules.rule]
+    - class: Etel\CodingStandard\PHPStan\ConstructorDependenciesRule
+      arguments:
+          limit: %etel.constructorDependencies%
+          exempt: %etel.constructorDependenciesExempt%
+      tags: [phpstan.rules.rule]

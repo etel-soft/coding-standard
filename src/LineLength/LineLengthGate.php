@@ -107,31 +107,50 @@ final readonly class LineLengthGate
             return;
         }
 
-        $closedAt = null;
-        $inDocblock = false;
+        $lines = file(filename: $file->getPathname(), flags: FILE_IGNORE_NEW_LINES) ?: [];
 
-        foreach (file(filename: $file->getPathname(), flags: FILE_IGNORE_NEW_LINES) ?: [] as $index => $line) {
+        foreach ($lines as $index => $line) {
             $length = mb_strlen(string: rtrim(string: $line, characters: "\r"), encoding: 'UTF-8');
 
             if ($length > self::LIMIT) {
                 $long[] = $path . ':' . ($index + 1) . ' (' . $length . ')';
             }
+        }
 
+        foreach (self::orphanDocblocks(lines: $lines) as $closedAt) {
+            $orphans[] = $path . ':' . $closedAt . ' (docblock followed by another docblock)';
+        }
+    }
+
+    /**
+     * The lines where a docblock closes that another docblock follows (with only blank lines between).
+     *
+     * @param list<string> $lines
+     *
+     * @return list<int>
+     */
+    private static function orphanDocblocks(array $lines): array
+    {
+        $orphans = [];
+        $closedAt = null;
+        $inDocblock = false;
+
+        foreach ($lines as $index => $line) {
             $trimmed = trim(string: $line);
+            $opens = !$inDocblock && str_starts_with(haystack: $trimmed, needle: '/**');
 
-            if ($inDocblock) {
-                $inDocblock = !str_ends_with(haystack: $trimmed, needle: '*/');
-                $closedAt = $inDocblock ? null : $index + 1;
-            } elseif (str_starts_with(haystack: $trimmed, needle: '/**')) {
-                if ($closedAt !== null) {
-                    $orphans[] = $path . ':' . $closedAt . ' (docblock followed by another docblock)';
-                }
+            if ($opens && $closedAt !== null) {
+                $orphans[] = $closedAt;
+            }
 
+            if ($inDocblock || $opens) {
                 $inDocblock = !str_ends_with(haystack: $trimmed, needle: '*/');
                 $closedAt = $inDocblock ? null : $index + 1;
             } elseif ($trimmed !== '') {
                 $closedAt = null;
             }
         }
+
+        return $orphans;
     }
 }

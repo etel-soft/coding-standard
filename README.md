@@ -1,8 +1,9 @@
-# etel coding standard
+# Etel coding standard
 
-The coding standard of the etel projects as a dev dependency: one place for the php-cs-fixer rule set, the
-fixers it needs, the PHPStan rules, the line-length gate and the coverage gate. A project lists only what it does differently, so
-a change to the standard is a version bump rather than an edit in every repository.
+The coding standard of the Etel projects as a dev dependency: one place for the php-cs-fixer rule set, the
+fixers it needs, the PHPStan rules, the line-length gate and the coverage gate.
+A project lists only what it does differently, so a change to the standard is a version bump
+rather than an edit in every repository.
 
 The conventions themselves (what the tools check and what they cannot) are described in the projects'
 `code-conventions.md`.
@@ -68,6 +69,24 @@ With `phpstan/extension-installer` the first include is not needed.
 | `rawXml`               | `true`  | `simplexml_load_*` only inside `xmlWrapper`                                |
 | `xmlWrapper`           | `null`  | the class allowed to call them; `null` — none is                           |
 | `ormRepository`        | `true`  | no Doctrine repositories: no `getRepository()`, no repository classes      |
+
+The size limits (a number; `0` turns the limit off):
+
+| Parameter (`etel.`)             | Default       | Limit                                                                |
+|---------------------------------|---------------|----------------------------------------------------------------------|
+| `methodComplexity`              | `15`          | cognitive complexity of a method (not in tests)                      |
+| `classComplexity`               | `60`          | cognitive complexity of a class: the sum of its methods' (not tests) |
+| `methodLength`                  | `50`          | lines of a method, docblock not counted (not in tests)               |
+| `classLength`                   | `500`         | lines of a class, docblock not counted                               |
+| `testClassLength`               | `2500`        | the same for test code: PHPUnit test cases and `testPaths`           |
+| `testPaths`                     | `['/tests/']` | path fragments of test code (doubles, fixtures, helpers)             |
+| `constructorDependencies`       | `8`           | parameters typed with a class or interface (not in tests)            |
+| `constructorDependenciesExempt` | `[]`          | namespace fragments left out of that one, say `'\Domain\'`           |
+
+Cognitive complexity is counted as by `tomasvotruba/cognitive-complexity`: +1 for each branch, loop, `catch`,
+ternary and run of one boolean operator, plus the nesting level for the ones that nest. A class over a limit that
+cannot be split yet goes into the project's `ignoreErrors` by identifier (`etel.methodComplexity`,
+`etel.classComplexity`, `etel.methodLength`, `etel.classLength`, `etel.constructorDependencies`) and path.
 
 Every rule is on by default; a project that has not got there yet turns one off and turns it back on when the
 code complies.
