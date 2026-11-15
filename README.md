@@ -67,6 +67,7 @@ With `phpstan/extension-installer` the first include is not needed.
 | `jsonWrapper`          | `null`  | the class allowed to call them; `null` — none is                           |
 | `rawXml`               | `true`  | `simplexml_load_*` only inside `xmlWrapper`                                |
 | `xmlWrapper`           | `null`  | the class allowed to call them; `null` — none is                           |
+| `ormRepository`        | `true`  | no Doctrine repositories: no `getRepository()`, no repository classes      |
 
 Every rule is on by default; a project that has not got there yet turns one off and turns it back on when the
 code complies.

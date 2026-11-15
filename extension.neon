@@ -17,6 +17,7 @@ parametersSchema:
         jsonWrapper: schema(string(), nullable()),
         rawXml: bool(),
         xmlWrapper: schema(string(), nullable()),
+        ormRepository: bool(),
     ])
 
 parameters:
@@ -33,6 +34,8 @@ parameters:
         # XML only through the wrapper class (null: no class may call simplexml_load_*)
         rawXml: true
         xmlWrapper: null
+        # no Doctrine repositories: neither getRepository() nor repository classes
+        ormRepository: true
 
 conditionalTags:
     Etel\CodingStandard\PHPStan\NamedArgumentsRule:
@@ -45,6 +48,10 @@ conditionalTags:
         phpstan.rules.rule: %etel.rawJson%
     Etel\CodingStandard\PHPStan\NoRawXmlRule:
         phpstan.rules.rule: %etel.rawXml%
+    Etel\CodingStandard\PHPStan\NoOrmRepositoryRule:
+        phpstan.rules.rule: %etel.ormRepository%
+    Etel\CodingStandard\PHPStan\NoOrmRepositoryClassRule:
+        phpstan.rules.rule: %etel.ormRepository%
 
 services:
     - class: Etel\CodingStandard\PHPStan\NamedArgumentsRule
@@ -56,3 +63,5 @@ services:
     - class: Etel\CodingStandard\PHPStan\NoRawXmlRule
       arguments:
           wrapper: %etel.xmlWrapper%
+    - class: Etel\CodingStandard\PHPStan\NoOrmRepositoryRule
+    - class: Etel\CodingStandard\PHPStan\NoOrmRepositoryClassRule

@@ -9,6 +9,10 @@ parameters:
         - bin/etel-line-length
         - src/
         - tests/
+    excludePaths:
+        # code the rules are tested on: it breaks them on purpose
+        analyse:
+            - tests/Fixtures/PHPStan
     # pcov is loaded only where coverage is collected: its API for the analysis elsewhere
     scanFiles:
         - stubs/pcov.php

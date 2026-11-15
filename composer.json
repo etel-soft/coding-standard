@@ -29,6 +29,7 @@
         "phpunit/phpunit": "For bin/etel-coverage (^13): the gate runs the unit tests through PHPUnit"
     },
     "require-dev": {
+        "doctrine/persistence": "^4.1",
         "phpunit/phpunit": "^13.1"
     },
     "autoload": {
