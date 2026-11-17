@@ -121,6 +121,22 @@ until its own test exercises it. Other `Covers*` attributes (`CoversNamespace`, 
 stop the run: they would silently count wrong. Code run in `setUpBeforeClass()` or by data providers counts for
 nobody.
 
+Code no test can reach — a branch the types already rule out, a guard against what cannot happen — is left out of
+the count with a marker in a comment, **the reason after it**:
+
+```php
+return $value ?? throw new LogicException(); // @codeCoverageIgnore the parser never yields null here
+
+// @codeCoverageIgnoreStart sodium fails only on a key of the wrong length, which the constructor refuses
+...
+// @codeCoverageIgnoreEnd
+```
+
+`@codeCoverageIgnore` leaves out the line it ends (a trailing comment) or, alone on its line, the next line of code;
+`@codeCoverageIgnoreStart` … `@codeCoverageIgnoreEnd` every line from one to the other. The summary says how many
+lines were left out. The run fails on a marker with no reason, an End with no Start, a Start with no End — and on a
+line left out that a declaring test covers: it is not dead. Code a test can reach is covered, not left out.
+
 Needs `phpunit/phpunit` ^13 and `ext-pcov` (both suggested by the package). It drives pcov itself because with
 PHPUnit 13 and pcov 1.0.x `phpunit --coverage-*` reports 0 %. pcov instruments only `pcov.directory` (by default
 `src/`, `lib/` or `app/` of the working directory): sources elsewhere need `-d pcov.directory=.`.
@@ -131,5 +147,6 @@ PHPUnit 13 and pcov 1.0.x `phpunit --coverage-*` reports 0 %. pcov instruments o
 | `COVERAGE_TESTS`    | `tests/Unit` | the test paths run, comma-separated                                   |
 | `COVERAGE_SCOPE`    | —            | report only sources under these prefixes, while working on one area   |
 
-Exit code 0 — every line covered and the tests passed; 1 — uncovered lines (listed file by file) or failing tests;
+Exit code 0 — every line covered and the tests passed; 1 — uncovered lines (listed file by file), markers to fix
+or failing tests;
 2 — no pcov, or a source directory that does not exist.

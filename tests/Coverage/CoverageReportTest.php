@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Etel\CodingStandardTests\Coverage;
 
 use Etel\CodingStandard\Coverage\CoverageReport;
+use Etel\CodingStandard\Coverage\IgnoredLines;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;
@@ -51,6 +52,50 @@ final class CoverageReportTest extends TestCase
 
         $this->assertTrue($report->isComplete());
         $this->assertSame("Line coverage: 100.00% (1/1)\n", $report->render());
+    }
+
+    #[Test]
+    #[TestDox('Lines left out are not counted; one a test covers, and a marker gone wrong, are to fix')]
+    public function leavesOutIgnoredLines(): void
+    {
+        $sources = ['/app/src/A.php', '/app/src/B.php'];
+        $executable = ['/app/src/A.php' => [3, 4, 5], '/app/src/B.php' => [7]];
+
+        $clean = CoverageReport::of(
+            root: '/app',
+            sources: $sources,
+            executable: $executable,
+            covered: ['/app/src/A.php' => [3 => true], '/app/src/B.php' => [7 => true]],
+            ignored: ['/app/src/A.php' => new IgnoredLines(lines: [4 => true, 5 => true, 6 => true], problems: [])]
+        );
+        $wrong = CoverageReport::of(
+            root: '/app',
+            sources: $sources,
+            executable: $executable,
+            covered: ['/app/src/A.php' => [3 => true, 4 => true]],
+            ignored: [
+                '/app/src/A.php' => new IgnoredLines(lines: [4 => true], problems: []),
+                '/app/src/B.php' => new IgnoredLines(lines: [], problems: ['9: @codeCoverageIgnoreEnd with no Start']),
+            ]
+        );
+
+        $this->assertSame([2, 2, 2], [$clean->total, $clean->covered, $clean->ignored]);
+        $this->assertTrue($clean->isComplete());
+        $this->assertSame("Line coverage: 100.00% (2/2), 2 left out\n", $clean->render());
+        $this->assertFalse($wrong->isComplete());
+        $this->assertSame(
+            <<<'TEXT'
+                Line coverage: 33.33% (1/3), 1 left out
+                Uncovered lines:
+                  src/A.php: 5
+                  src/B.php: 7
+                Coverage markers to fix:
+                  src/A.php:4: covered, yet marked @codeCoverageIgnore
+                  src/B.php:9: @codeCoverageIgnoreEnd with no Start
+
+                TEXT,
+            $wrong->render()
+        );
     }
 
     #[Test]

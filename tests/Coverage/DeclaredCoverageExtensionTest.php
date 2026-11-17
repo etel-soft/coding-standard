@@ -52,7 +52,10 @@ final class DeclaredCoverageExtensionTest extends TestCase
             $output,
             'the fixture run is clean'
         );
-        $this->assertStringContainsString("Line coverage: 60.00% (3/5)\nUncovered lines:\n", $output);
+        $this->assertStringContainsString(
+            "Line coverage: 60.00% (3/5), 1 left out\nUncovered lines:\n",
+            $output
+        );
         $this->assertStringContainsString('  Src/Helper.php: 14', $output);
         $this->assertStringContainsString('  Src/functions.php: 9', $output);
         $this->assertStringNotContainsString('Src/Calculator.php', $output);
@@ -66,7 +69,7 @@ final class DeclaredCoverageExtensionTest extends TestCase
         [$exit, $output] = self::coverage(environment: ['COVERAGE_SCOPE' => 'Src/Calculator.php,Src/Rounding.php']);
 
         $this->assertSame(0, $exit, $output);
-        $this->assertStringContainsString('Line coverage: 100.00% (3/3)', $output);
+        $this->assertStringContainsString('Line coverage: 100.00% (3/3), 1 left out', $output);
     }
 
     #[Test]

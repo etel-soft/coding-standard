@@ -20,7 +20,8 @@ declare(strict_types=1);
  * with the filter and comes back empty — every report says 0%. Raw pcov collects fine, so we drive it here.
  *
  * Every source is loaded before the suite: the lines that run at load time (class declarations) are not counted, the
- * rest is the executable total.
+ * rest is the executable total — less the dead code a source marks with @codeCoverageIgnore and a reason
+ * (see Etel\CodingStandard\Coverage\IgnoredLines).
  *
  * Environment (lists are comma-separated, paths relative to the root):
  *   COVERAGE_SOURCES=src                    the directories measured (default: src)
@@ -30,6 +31,7 @@ declare(strict_types=1);
 
 use Etel\CodingStandard\Coverage\CoverageReport;
 use Etel\CodingStandard\Coverage\DeclaredCoverageExtension;
+use Etel\CodingStandard\Coverage\IgnoredLines;
 use PHPUnit\TextUI\Application;
 
 if (!\extension_loaded(extension: 'pcov') || !\ini_get(option: 'pcov.enabled')) {
@@ -119,15 +121,22 @@ foreach (\pcov\collect(type: \pcov\inclusive, filter: $sources) as $file => $lin
 
 \pcov\clear();
 
+$ignored = [];
+
+foreach ($sources as $source) {
+    $ignored[$source] = IgnoredLines::of(code: (string) \file_get_contents(filename: $source));
+}
+
 // PHPUnit may end the process itself: the verdict is given on shutdown
-\register_shutdown_function(callback: static function () use ($root, $sources, $executable): void {
+\register_shutdown_function(callback: static function () use ($root, $sources, $executable, $ignored): void {
     \pcov\stop();
 
     $report = CoverageReport::of(
         root: $root,
         sources: $sources,
         executable: $executable,
-        covered: DeclaredCoverageExtension::$covered
+        covered: DeclaredCoverageExtension::$covered,
+        ignored: $ignored
     );
     \fwrite(stream: STDERR, data: PHP_EOL . $report->render());
 
